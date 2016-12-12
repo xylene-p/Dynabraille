@@ -5,14 +5,13 @@
 //Pin connected to ST_CP of 74HC595
 int latchPin = 19;
 //Pin connected to SH_CP of 74HC595
-int clockPin = 7;
+int clockPin = 5;
 ////Pin connected to DS of 74HC595
-int dataPin = 5;
+int dataPin = 2;
 
 byte data;
 byte g1Braille[127];
 byte digit;
-
 
 int incomingByte = 0;
 
@@ -116,13 +115,15 @@ void loop() {
   
       digitalWrite(latchPin, 0);
   
-      shiftOut(dataPin, clockPin, 0);
       shiftOut(dataPin, clockPin, data);
   
       digitalWrite(latchPin, 1);
+
+      //delay(500);
+
+      buffer[i] = '\0';
   
-      delay(500);
-    }   
+    }  
   }
 }
 
@@ -170,6 +171,7 @@ void shiftOut(int myDataPin, int myClockPin, byte myDataOut) {
 
   //stop shifting
   digitalWrite(myClockPin, 0);
+
 }
 
 void printBrailleCell(byte character, byte brailleArray[]) {
