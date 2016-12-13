@@ -10,13 +10,14 @@ int clockPin = 5;
 int dataPin = 2;
 
 byte data;
-byte g1Braille[127];
+byte g1Braille[260];
 byte digit;
 
 int incomingByte = 0;
 
 char buffer[4];
 char character;
+int bufferLength = 4;
 
 void setup() {
   //set pins to output because they are addressed in the main loop
@@ -87,43 +88,58 @@ void setup() {
   g1Braille[120] = 0x2D; //0b101101 - x
   g1Braille[121] = 0x3D; //0b111101 - y
   g1Braille[122] = 0x35; //0b110101 - z
+  g1Braille[128] = 0x20; //0b100000 - capital letter
+  g1Braille[129] = 0x24; //0b100100 - all capital letters
 
 }
 
 void loop() {
   if (Serial.available() == 0) {
-    Serial.print("Enter a 4-letter string: ");
+    Serial.print("Enter a ");
+    Serial.print(bufferLength);
+    Serial.print("-letter string: ");
     while (Serial.available() == 0) {
-      
+
     }
   }
 
   if (Serial.available() > 0) {
 
-    Serial.readBytes(buffer, 4);
+    Serial.readBytes(buffer, bufferLength);
 
     Serial.println(buffer);
 
-    printBrailleLine(buffer, sizeof(buffer), g1Braille);
+    int* p;
+    p = checkBuffer(buffer);
 
-    for (int i = 3; i > -1 ; i--) {
+    /*for (int i = 0; i < bufferLength; i++) {
+        Serial.print(i);
+        Serial.print(" ");
+        Serial.print(*(p+i));
+        Serial.print("\n");
+    }
+    */
+
+    printBrailleLine(p, bufferLength, g1Braille);
+
+    for (int i = bufferLength - 1; i >= 0 ; i--) {
       // load braille cell, last character first
-      character = int(buffer[i]);
-      data = g1Braille[buffer[i]];
+      data = g1Braille[*(p+i)];
 
-      //printBrailleCell(character, g1Braille);
-  
+     // printBrailleCell(*(p+i), g1Braille);
+
       digitalWrite(latchPin, 0);
-  
+
       shiftOut(dataPin, clockPin, data);
-  
+
       digitalWrite(latchPin, 1);
 
       //delay(500);
 
-      buffer[i] = '\0';
-  
-    }  
+      buffer[i] = 0;
+      *(p+i) = 0;
+
+    }
   }
 }
 
@@ -174,9 +190,36 @@ void shiftOut(int myDataPin, int myClockPin, byte myDataOut) {
 
 }
 
+int* checkBuffer(char buffer[])
+{
+    static int r[10];
+    char ch;
+    int i, j;
+
+    for (i = 0, j = 0; buffer[i] != NULL; i++) {
+        ch = buffer[i];
+        if (buffer[i] >= 'A' && buffer[i] <= 'Z'){
+            r[j] = 128;
+            r[j+1] = ch;
+            j += 2;
+        }
+        else if (buffer[i] >= '0' && buffer[i] <= '9') {
+            r[j] = 35;
+            r[j+1] = ch;
+            j += 2;
+        }
+        else {
+            r[j] = ch;
+            j++;
+        }
+    }
+
+    return r;
+}
+
 void printBrailleCell(byte character, byte brailleArray[]) {
   // Print only one braille cell per line
-  
+
   byte data = brailleArray[character];
   byte digit = data;
   int result[6];
@@ -185,7 +228,7 @@ void printBrailleCell(byte character, byte brailleArray[]) {
   char on = char(149),
        off = 'o';
   byte disp;
-  
+
       for (int d = 0; d < 6; d++) {
         result[d] = digit % 2;
         digit = digit >> 1;
@@ -205,7 +248,7 @@ void printBrailleCell(byte character, byte brailleArray[]) {
       }
 }
 
-void printBrailleLine(char buffer[], int maxLength, byte brailleArray[]) {
+void printBrailleLine(int *p, int maxLength, byte brailleArray[]) {
   // Print all cells in a row
 
   int maxSize = maxLength*6;
@@ -224,8 +267,7 @@ void printBrailleLine(char buffer[], int maxLength, byte brailleArray[]) {
   int count = 0;
   while (count < maxSize) {
     for (int i = 0; i < maxLength; i++) {
-      character = buffer[i];
-      data = brailleArray[character];
+      data = brailleArray[*(p+i)];
       digit = data;
       for (int d = 0; d < 6; d++) {
           result[count] = digit % 2;
@@ -237,7 +279,7 @@ void printBrailleLine(char buffer[], int maxLength, byte brailleArray[]) {
 
 
   Serial.print("\n");
-  
+
   count = 0;
   int i = 0;
   while (count < maxSize) {
@@ -274,4 +316,3 @@ void printBrailleLine(char buffer[], int maxLength, byte brailleArray[]) {
 
   Serial.print("\n");
 }
-
